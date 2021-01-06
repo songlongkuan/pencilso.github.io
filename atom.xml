@@ -3,11 +3,11 @@
   <title>宋龙宽|个人博客</title>
   
   
-  <link href="http://example.com/atom.xml" rel="self"/>
+  <link href="https://songlongkuan.com/atom.xml" rel="self"/>
   
-  <link href="http://example.com/"/>
+  <link href="https://songlongkuan.com/"/>
   <updated>2021-01-06T05:16:50.019Z</updated>
-  <id>http://example.com/</id>
+  <id>https://songlongkuan.com/</id>
   
   <author>
     <name>宋龙宽|个人博客</name>
@@ -18,8 +18,8 @@
   
   <entry>
     <title>Java之ThreadLocal</title>
-    <link href="http://example.com/2020/09/12/java_threadlocal/"/>
-    <id>http://example.com/2020/09/12/java_threadlocal/</id>
+    <link href="https://songlongkuan.com/2020/09/12/java_threadlocal/"/>
+    <id>https://songlongkuan.com/2020/09/12/java_threadlocal/</id>
     <published>2020-09-12T07:30:16.000Z</published>
     <updated>2021-01-06T05:16:50.019Z</updated>
     
@@ -30,12 +30,12 @@
     
     
     
-    <category term="Java" scheme="http://example.com/categories/Java/"/>
+    <category term="Java" scheme="https://songlongkuan.com/categories/Java/"/>
     
     
-    <category term="Java" scheme="http://example.com/tags/Java/"/>
+    <category term="Java" scheme="https://songlongkuan.com/tags/Java/"/>
     
-    <category term="ThreadLocal" scheme="http://example.com/tags/ThreadLocal/"/>
+    <category term="ThreadLocal" scheme="https://songlongkuan.com/tags/ThreadLocal/"/>
     
   </entry>
   
