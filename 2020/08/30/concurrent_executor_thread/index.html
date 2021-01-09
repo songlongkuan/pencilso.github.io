@@ -935,6 +935,16 @@ getTask方法返回null时，在runWorker方法中会跳出while循环，然后�
   
   
   
+  <script type="text/javascript" src="/lib/snow.js"></script>
+  <script type="text/javascript" src="/lib/jquery-2.1.4.min.js"></script>
+  <script>
+    snow.down();
+    $(window).resize(function() {
+      $("canvas").css("z-index","500").remove();
+      snow.down();
+    });
+  </script>
+  
 </body>
 
 </html>
