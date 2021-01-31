@@ -6,17 +6,25 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
   <link rel="dns-prefetch" href="https://songlongkuan.com">
-  <title>Tag: Java | 宋龙宽|个人博客</title>
+  <title>Redis 缓存设计与性能优化 | 宋龙宽|个人博客</title>
   <meta name="generator" content="hexo-theme-yilia-plus">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   
-  <meta property="og:type" content="website">
-<meta property="og:title" content="宋龙宽|个人博客">
-<meta property="og:url" content="https://songlongkuan.com/tags/Java/index.html">
+  <meta name="description" content="Redis 缓存设计与性能优化">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis 缓存设计与性能优化">
+<meta property="og:url" content="https://songlongkuan.com/2020/06/26/redis_cache_optimization/index.html">
 <meta property="og:site_name" content="宋龙宽|个人博客">
+<meta property="og:description" content="Redis 缓存设计与性能优化">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://oss.pencilso.cn/enclosure/QQ20200626-141708@2x_1593152275864.png">
+<meta property="og:image" content="https://oss.pencilso.cn/enclosure/redis_boolean_1593156113933.png">
+<meta property="article:published_time" content="2020-06-26T09:50:00.000Z">
+<meta property="article:modified_time" content="2021-01-31T12:16:06.645Z">
 <meta property="article:author" content="宋龙宽|个人博客">
+<meta property="article:tag" content="redis">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://oss.pencilso.cn/enclosure/QQ20200626-141708@2x_1593152275864.png">
   
     <link rel="alternative" href="/atom.xml" title="宋龙宽|个人博客" type="application/atom+xml">
   
@@ -179,138 +187,481 @@
               class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
-  
-  
+            <article id="post-redis_cache_optimization" class="article article-type-post " itemscope itemprop="blogPost">
+  <div class="article-inner">
     
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2020" class="archive-year">2020</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	
-<a href="/2020/09/12/java_threadlocal/" class="archive-article-date">
-        <time datetime="2020-09-12T07:30:16.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-09-12</time>
-</a>
-
-        </div>
-    	 
+      <header class="article-header">
   
-    <h1 itemprop="name">
-	
-	  <a class="archive-article-title" href="/2020/09/12/java_threadlocal/" target="_blank">Java之ThreadLocal</a>
   
+    <h1 class="article-title" itemprop="name">
+      Redis 缓存设计与性能优化
     </h1>
   
 
 
-        <div class="article-info info-on-right">
+  
+  
+        
+        <span id="busuanzi_container_page_pv" style='display:none' class="archive-article-date">
+              <i class="icon-smile icon"></i> 阅读数：<span id="busuanzi_value_page_pv"></span>次
+        </span>
+
+<a href="/2020/06/26/redis_cache_optimization/" class="archive-article-date">
+        <time datetime="2020-06-26T09:50:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-06-26</time>
+</a>
+
+  
+  
+    
+<div style="margin-top:10px;">
+  <span class="post-time">
+    <span class="post-meta-item-icon">
+      <!-- fonts.scss -->
+      <!-- 百度字体平台:http://fontstore.baidu.com/static/editor/index.html -->
+      <i class="icon-statistics"></i>
+      <span class="post-meta-item-text"> 字数统计:</span>
+      <span class="post-count">4k字</span>
+    </span>
+  </span>
+
+  <span class="post-time">
+    &nbsp; | &nbsp;
+    <span class="post-meta-item-icon">
+      <i class="icon-book icon"></i>
+      <span class="post-meta-item-text"> 阅读时长≈</span>
+      <span class="post-count">15分</span>
+    </span>
+  </span>
+</div>
+
+
+  
+  </header>
+  
+  <div class="article-entry" itemprop="articleBody">
+    
+    <h2 id="缓存设计需要注意的问题"><a href="#缓存设计需要注意的问题" class="headerlink" title="缓存设计需要注意的问题"></a>缓存设计需要注意的问题</h2><a id="more"></a>
+
+<h3 id="缓存穿透"><a href="#缓存穿透" class="headerlink" title="缓存穿透"></a>缓存穿透</h3><h6 id="缓存穿透原因"><a href="#缓存穿透原因" class="headerlink" title="缓存穿透原因"></a>缓存穿透原因</h6><p>缓存穿透是指查询一个根本不存在的数据，缓存层不会命中，从而大量的查询存储层。</p>
+<p>通常我们的设计如图下所示：</p>
+<p> <img src="https://oss.pencilso.cn/enclosure/QQ20200626-141708@2x_1593152275864.png" alt="QQ20200626-141708@2x"></p>
+<p>缓存穿透会导致每次的请求都会执行db查询，增加数据库的压力，从而失去了缓存的意义。</p>
+<p>造成这种情况出现基本原因有两个</p>
+<ul>
+<li>自身业务代码或者数据出现问题</li>
+<li>一些恶意攻击，爬虫等造成大量空命中</li>
+</ul>
+<h6 id="缓存穿透解决方案"><a href="#缓存穿透解决方案" class="headerlink" title="缓存穿透解决方案"></a>缓存穿透解决方案</h6><p>解决方案 一 ：</p>
+<p>​    对空对象进行缓存，也就是说，即使从db获取不到数据，也进行缓存，放到redis中。</p>
+<p>​    但是这种方案，如果是恶意攻击的话，不太适用，倘若对方生成上亿个key，查询不到难道都放redis中吗？</p>
+<p>解决方案二：</p>
+<p>​    布隆过滤器：</p>
+<p>​    布隆过滤器是一个大型的位数组和几个不一样的无偏hash函数。所谓无偏就是能够把元素的hash值算的比较均匀。</p>
+<p>向布隆过滤器添加key时，会使用多个hash函数对key进行hash运算，每个函数算得一个整数索引值然后对位数组长度进行取模运算得到一个位置，每个hash函数都会算得一个不同的位置，再把位数组的这几个位置都设置为1，就完成了add操作。</p>
+<p>向布隆过滤器询问key是否存在时，同样会用多个hash函数对key进行运算，多个函数运算的整数索引值再取模位数组长度，最后得到key的多个所在位置，已知key所在的位置，取出数据判断是否都为1，只要有一个位置为0，则表示这个key是不存在的，但是如果都为1的话，这并不表示这个key就一定存在，只是极有可能存在。因为有可能是多个key产生了hash碰撞，导致其他的key对这个位置的数据设置为了1。</p>
+<p>大概结构图长下面这个样子：</p>
+<p>​        布隆过滤器在对多个key进行hash运算时，存在hash碰撞的可能，如下所示，两个key的hash-3算法碰撞。位数组越小，产生的概率就会越大。</p>
+<p> <img src="https://oss.pencilso.cn/enclosure/redis_boolean_1593156113933.png" alt="redis_boolean"></p>
+<p>对于恶意攻击，向服务器请求大量不存在的数据造成的缓存穿透，可以用布隆过滤器先做一次过滤，对于不存在的数据布隆过滤器一般都可以过滤掉，不让请求再往后端发送，当布隆过滤器说某个值存在时，这个值可能存在；当它说不存在时，那就肯定不存在。</p>
+<p>代码维护较为复杂，但是缓存空间占用很少。</p>
+<h6 id="Guava-布隆过滤器"><a href="#Guava-布隆过滤器" class="headerlink" title="Guava 布隆过滤器"></a>Guava 布隆过滤器</h6><p>谷歌的Guava包里面有布隆过滤器实现</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- https://mvnrepository.com/artifact/com.google.guava/guava --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.google.guava<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>guava<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>29.0-jre<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>示例代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">GuavaBooleanFilterMain</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        BloomFilter&lt;String&gt; bloomFilter = BloomFilter.create(</span><br><span class="line">                Funnels.stringFunnel(Charset.defaultCharset()),</span><br><span class="line">                <span class="number">1000</span>,<span class="comment">//预期的数据量</span></span><br><span class="line">                <span class="number">0.001</span><span class="comment">//预期的误差值，必须为正，且小于0</span></span><br><span class="line">        );</span><br><span class="line">        <span class="comment">//添加指定的key</span></span><br><span class="line">        bloomFilter.put(<span class="string">&quot;zhangsan&quot;</span>);</span><br><span class="line">        bloomFilter.put(<span class="string">&quot;lisi&quot;</span>);</span><br><span class="line"></span><br><span class="line">        System.out.println(bloomFilter.mightContain(<span class="string">&quot;zhangsan&quot;</span>));</span><br><span class="line">        System.out.println(bloomFilter.mightContain(<span class="string">&quot;lisi&quot;</span>));</span><br><span class="line">        System.out.println(bloomFilter.mightContain(<span class="string">&quot;wangwu&quot;</span>));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">-----输出结果如下</span><br><span class="line"><span class="keyword">true</span></span><br><span class="line"><span class="keyword">true</span></span><br><span class="line"><span class="keyword">false</span></span><br></pre></td></tr></table></figure>
+
+<h6 id="Redisson-布隆过滤器"><a href="#Redisson-布隆过滤器" class="headerlink" title="Redisson 布隆过滤器"></a>Redisson 布隆过滤器</h6><p>Guava 的布隆过滤器只适合单机模式下的进程。</p>
+<p>而大多数场景都是集群、分布式部署的，所以我们需要分布式的布隆过滤器，Redisson对这方面也有实现。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.redisson<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>redisson<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.13.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>先创建JavaBean</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SomeObject</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> String key;</span><br><span class="line">    <span class="keyword">private</span> String value;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getKey</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> key;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getValue</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> value;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setKey</span><span class="params">(String key)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.key = key;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setValue</span><span class="params">(String value)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.value = value;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">SomeObject</span><span class="params">(String key, String value)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.key = key;</span><br><span class="line">        <span class="keyword">this</span>.value = value;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="单点Redis使用"><a href="#单点Redis使用" class="headerlink" title="单点Redis使用"></a>单点Redis使用</h6><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">   <span class="meta">@RequestMapping(&quot;redis_filter&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">redisFilter</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        RBloomFilter&lt;SomeObject&gt; bloomFilter = redissonClient.getBloomFilter(<span class="string">&quot;sample&quot;</span>);</span><br><span class="line">        <span class="comment">// 初始化布隆过滤器</span></span><br><span class="line">        <span class="comment">// 预期插入数据 = 55000000</span></span><br><span class="line">        <span class="comment">// 预期错误概率 必须为正数，且小于0 = 0.03</span></span><br><span class="line">        bloomFilter.tryInit(<span class="number">55000000L</span>, <span class="number">0.03</span>);</span><br><span class="line"></span><br><span class="line">        bloomFilter.add(<span class="keyword">new</span> SomeObject(<span class="string">&quot;field1Value&quot;</span>, <span class="string">&quot;field2Value&quot;</span>));</span><br><span class="line">        bloomFilter.add(<span class="keyword">new</span> SomeObject(<span class="string">&quot;field5Value&quot;</span>, <span class="string">&quot;field8Value&quot;</span>));</span><br><span class="line"></span><br><span class="line">        System.out.println(<span class="string">&quot;contains-&gt; field1Value :&quot;</span>+bloomFilter.contains(<span class="keyword">new</span> SomeObject(<span class="string">&quot;field1Value&quot;</span>, <span class="string">&quot;field2Value&quot;</span>)));</span><br><span class="line">        System.out.println(<span class="string">&quot;contains-&gt; field1Value :&quot;</span>+bloomFilter.contains(<span class="keyword">new</span> SomeObject(<span class="string">&quot;field5Value&quot;</span>, <span class="string">&quot;123&quot;</span>)));</span><br><span class="line">        System.out.println(<span class="string">&quot;count:&quot;</span> + bloomFilter.count());</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;SUCCESS&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">-- 输出内容如下</span><br><span class="line">  </span><br><span class="line">contains-&gt; field1Value :<span class="keyword">true</span></span><br><span class="line">contains-&gt; field1Value :<span class="keyword">false</span></span><br><span class="line">count:<span class="number">4</span></span><br></pre></td></tr></table></figure>
+
+<h6 id="集群Redis节点使用"><a href="#集群Redis节点使用" class="headerlink" title="集群Redis节点使用"></a>集群Redis节点使用</h6><p>该api 官方文档上说只支持redisson pro版本使用，我这里就没有再去测试了。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">RClusteredBloomFilter&lt;SomeObject&gt; bloomFilter = redisson.getClusteredBloomFilter(<span class="string">&quot;sample&quot;</span>);</span><br><span class="line"><span class="comment">// initialize bloom filter with </span></span><br><span class="line"><span class="comment">// expectedInsertions = 255000000</span></span><br><span class="line"><span class="comment">// falseProbability = 0.03</span></span><br><span class="line">bloomFilter.tryInit(<span class="number">255000000L</span>, <span class="number">0.03</span>);</span><br><span class="line">bloomFilter.add(<span class="keyword">new</span> SomeObject(<span class="string">&quot;field1Value&quot;</span>, <span class="string">&quot;field2Value&quot;</span>));</span><br><span class="line">bloomFilter.add(<span class="keyword">new</span> SomeObject(<span class="string">&quot;field5Value&quot;</span>, <span class="string">&quot;field8Value&quot;</span>));</span><br><span class="line">bloomFilter.contains(<span class="keyword">new</span> SomeObject(<span class="string">&quot;field1Value&quot;</span>, <span class="string">&quot;field8Value&quot;</span>));</span><br></pre></td></tr></table></figure>
+
+<h3 id="缓存失效"><a href="#缓存失效" class="headerlink" title="缓存失效"></a>缓存失效</h3><p>由于大批量缓存在同一时间失效，可能导致大量请求同时穿透缓存直达数据库，可能会造成数据库瞬间压力过大，甚至挂掉，对于这种情况，我们可以在批量增加缓存时最好将这一批数据的缓存过期时间设置为一个时间段内的不同时间。</p>
+<p>比如说基础失效时间为3分钟，那么3minute + random(60) second ，为最终的失效时间。</p>
+<h3 id="缓存雪崩"><a href="#缓存雪崩" class="headerlink" title="缓存雪崩"></a>缓存雪崩</h3><p>缓存雪崩指的是缓存层支撑不住或者宕机后，流量会大量的打到后端的存储层。</p>
+<p>由于缓存层承载着大量请求，有效保护了存储层，如果缓存层由于某些原因不能提供服务（比如大量并发请求、缓存设计不好、类似大量请求访问bigkey ； 导致缓存能支撑的并发急剧下降），于是大量请求都会打到存储层，存储层的调用量会暴增，造成存储层也会级联宕机的情况。</p>
+<p>预防和解决缓存雪崩问题，可以从以下三个方面进行。</p>
+<ul>
+<li>保障缓存层服务的高可用性，比如使用Redis Sentinel 、 Redis Cluster。</li>
+<li>依赖隔离组件为后端接口限流并降级。</li>
+<li>提前演练。在项目上线前，演练缓存层宕机后，应用以及后端的负载情况以及可能出现的问题，在此基础上做一些预案设定。</li>
+</ul>
+<h3 id="热点缓存key重建优化"><a href="#热点缓存key重建优化" class="headerlink" title="热点缓存key重建优化"></a>热点缓存key重建优化</h3><p>使用 “缓存+过期时间” 的策略既可以实现加速数据读写，又保证数据的定期更新，这种模式基本能够满足绝大部分需求。但是有两个问题如果同时出现，可能就会对应用造成致命的危害：</p>
+<ul>
+<li>当前key是一个热点 key，并发量非常大</li>
+<li>重建缓存不能在短时间完成，可能是一个复杂的计算、复杂的Sql、多次IO 等等</li>
+</ul>
+<p>在缓存失效的瞬间，有大量线程来重建缓存，会造成后端负载加大，甚至可能会让应用崩溃。</p>
+<p>要解决这个问题主要就是避免大量线程同时重建缓存。</p>
+<p>可以利用互斥锁来解决，一般来说，使用JDK内置的互斥锁足够了，保障一个进程只有一个线程执行重建缓存。</p>
+<p>如果有大量的集群节点的话，可以使用Redis的分布式锁来做，最终的目的是达到只有一个线程重建缓存。</p>
+<h2 id="性能优化"><a href="#性能优化" class="headerlink" title="性能优化"></a>性能优化</h2><h3 id="键值设计"><a href="#键值设计" class="headerlink" title="键值设计"></a>键值设计</h3><h6 id="key-设计"><a href="#key-设计" class="headerlink" title="key 设计"></a>key 设计</h6><p>1、可读性和可管理性</p>
+<p>以业务名（或数据库名）为前缀（防止key冲突），用冒号分隔，比如业务名:表名:id</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">share:article:1</span><br></pre></td></tr></table></figure>
+
+<p>2、简洁性</p>
+<p>保证语义的前提下，控制key的长度，当key较多时，内存占用也不容忽视</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">原始key: user:&#123;uid&#125;:friends:message:&#123;mid&#125;</span><br><span class="line">简化key: u:&#123;uid&#125;:fr:m&#123;mid&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="value-设计"><a href="#value-设计" class="headerlink" title="value 设计"></a>value 设计</h6><p>1、拒绝bigkey （防止网卡流量、慢查询）</p>
+<ul>
+<li><p>字符串类型 : 它的big体现在单个value值很大，一般认为超过10kb就是bigkey。</p>
+</li>
+<li><p>非字符串类型 : 哈希、列表、集合、有序即可，它们的big体现在元素个数太多。</p>
+</li>
+</ul>
+<p>一般来说，String类型控制在10kb以内，hash、list、set、zset元素个数不要超过5000.</p>
+<p>非字符串的bigkey，不要直接使用del删除，否则会引起阻塞情况的发生，应使用hcan、sscan、zscan方式渐进式删除。</p>
+<p>同时要注意防止bigkey过期时间自动删除问题，如果没有设置异步过期的话，redis过期删除也会造成阻塞。</p>
+<h6 id="bigkey的危害"><a href="#bigkey的危害" class="headerlink" title="bigkey的危害"></a>bigkey的危害</h6><ul>
+<li>导致redis阻塞</li>
+<li>网络拥塞<ul>
+<li>bigkey也就意味着每次获取要产生的网络流量较大，假设一个bigkey为1MB，客户端每秒访问量为1000，那么每秒产生1000MB的流量，对于普通千兆网卡的服务器来讲简直是灭顶之灾。</li>
+</ul>
+</li>
+<li>过期删除<ul>
+<li>有个bigkey，一旦设置了过期时间，当它过期后，会被删除，如果没有使用Redis 4.0的过期异步删除（ lazyfree-lazy- expire yes ），就会存在阻塞Redis的可能性。</li>
+</ul>
+</li>
+</ul>
+<h6 id="bigkey的产生"><a href="#bigkey的产生" class="headerlink" title="bigkey的产生"></a>bigkey的产生</h6><ul>
+<li>社交类：粉丝列表，如果某些明星或者大V不精心设计下，必是bigkey。</li>
+<li>统计类：例如按天存储某项功能或者网站的用户集合，除非没几个人用，否则必是bigkey。</li>
+<li>缓存类：将数据从数据库load出来，序列化放到Redis里，这个方式非常常用，但是有两个地方需要注意。<ul>
+<li>是不是有必要把所有字段都缓存</li>
+<li>有没有相关关联的数据，可能为了图方便把相关数据都存一个key下，产生bigkey。</li>
+</ul>
+</li>
+</ul>
+<h6 id="如何优化bigkey"><a href="#如何优化bigkey" class="headerlink" title="如何优化bigkey"></a>如何优化bigkey</h6><ul>
+<li>拆成多个key，可以参考 ConcurrentHashMap的分段式设计。<ul>
+<li>Biglist –&gt; list-1、list-2、list-3…list-N </li>
+</ul>
+</li>
+<li>如果bigkey不可避免，也要考虑一下有没有必要每次都把所有元素取出来（例如有时候仅仅需要hmget，而不是hgetall），删除也是一样，尽量使用优雅的方式来处理。</li>
+<li>选择适合的数据类型<ul>
+<li>比如对象类型，应放到hash数据类型里。 例如 : “ hmset user:1 name zhangsan age 20”</li>
+</ul>
+</li>
+<li>控制key的生命周期<ul>
+<li>使用expire设置过期时间（条件允许可以打散过期时间，防止集中过期）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="命令使用"><a href="#命令使用" class="headerlink" title="命令使用"></a>命令使用</h3><ul>
+<li>O(N) 命令关注N的数量<ul>
+<li>例如hgetall、lrange、smembers、zrange、sinter等并发不能使用，但是需要明确N的值。有遍历的需求可以使用hscan、sscan、zscan代替。</li>
+</ul>
+</li>
+<li>禁用命令<ul>
+<li>禁止线上使用keys、flushall、flushdb等，通过redis的rename机制禁掉命令，或者使用scan的方式渐进式处理。</li>
+</ul>
+</li>
+<li>合理使用select<ul>
+<li>redis的多数据库较弱，使用数字进行区分，很多客户端支持较差，同时多业务用多数据库实际还是单线程处理，会有干扰。</li>
+</ul>
+</li>
+<li>使用批量操作提高效率<ul>
+<li>原生命令：mget、mset…</li>
+<li>非原生命令：可以使用pipeline管道提高效率。</li>
+</ul>
+</li>
+<li>Redis事务功能较弱，不建议过多使用，可以用lua替代</li>
+</ul>
+<h3 id="客户端使用"><a href="#客户端使用" class="headerlink" title="客户端使用"></a>客户端使用</h3><p>避免多个应用使用一个Redis实例</p>
+<p>使用带有连接池的数据库，可以有效控制连接，同时提高效率，比如JedisPool。</p>
+<p>客户端参数调优</p>
+<ul>
+<li>maxActive：最大连接数<ul>
+<li>这个参数考虑的因素比较多：</li>
+<li>业务希望Redis的并发量</li>
+<li>客户端执行命令时间</li>
+<li>Redis资源： 应用个数 * maxActive 是不能超过 redis的最大连接数 maxclients。</li>
+<li>资源开销：虽然希望控制空闲连接（连接池此刻可用连接），但是不希望因为连接池的频繁释放和创建连接造成不必要的开销。</li>
+<li>假设：一次redis命令时间的平均耗时约为1ms，那么一个连接的QPS大约是1000。业务期望的QPS是50000，那么理论上需要的资源池大小是 50000 / 1000 = 50 个连接。但事实上这只是个理论值，还要考虑到预留一些资源，通常我们会为maxActive设置的比理论值大一些。</li>
+<li>maxActive 并不是设置越大越好，一方面连接太多占用客户端和服务端资源，另一方面对于Redis这种单线程的服务，一个大命令的阻塞即使设置再大资源池仍然会无济于事。</li>
+</ul>
+</li>
+<li>maxIdle <ul>
+<li>maxIdle实际上才是业务需要的最大连接数，maxActive是为了给出余量，所以maxIdle不要设置过小，否则会有创建新连接的开销。</li>
+<li>连接池的最佳性能是maxActive = maxIdle，这样就避免连接池伸缩带来的性能干扰。</li>
+<li>但是如果并发量不大或者maxActive设置过高，会导致不必要的连接资源浪费，一般推荐maxIdle可以设置为按上面的业务期望QPS计算出来的理论连接数，maxActive可以再放大一倍。</li>
+</ul>
+</li>
+<li>minIdle<ul>
+<li>minIdle (至少需要保持的空闲连接数)，在使用连接的过程中，如果连接数超过了minIdle，那么会继续建立连接，如果超过了maxIdle，当超过的连接执行完业务后悔慢慢被移出连接池并释放掉。</li>
+<li>如果系统启动完，马上就会有很多的请求过来，那么可以给redis连接池做预热，比如快速的创建一些redis连接，执行简单命令，类似ping() ， 快速的将连接池里的空闲连接提升到minIdle的数量。</li>
+</ul>
+</li>
+</ul>
+<p>高并发下建议客户端添加熔断功能（netflix、hystrix）</p>
+<p>设置合理的密码，如有必要可以使用SSL加密访问</p>
+<h3 id="Redis-清除策略"><a href="#Redis-清除策略" class="headerlink" title="Redis 清除策略"></a>Redis 清除策略</h3><p>Redis对于过期键有三种清除策略</p>
+<ul>
+<li><p>被动删除：当读/写一个已经过期的key时，会出发惰性删除策略，直接删除掉这个过期key</p>
+</li>
+<li><p>主动删除：由于惰性删除策略无法保证冷数据被及时删掉，所以Redis会定期主动淘汰一批已过期的key</p>
+</li>
+<li><p>当前已用内存超过maxmemory限定时，触发主动清理策略</p>
+</li>
+</ul>
+<p>当Redis运行在主从模式时，只有主节点才会执行被动和主动这两种过期删除策略，然后把删除操作” del key “ 同步到从节点。</p>
+<p>第三种策略的情况如下:</p>
+<p>当前已用内存超过maxmemory限定时，会触发主动清理策略</p>
+<p>根据自身业务类型，选好maxmemory-policy ( 最大内存淘汰策略 )，设置好过期时间。如果不设置最大内存，当Redis内存超出物理内存限制时，内存的数据会开始和磁盘产生频繁的交换 (swap ) ，会让Redis的性能急剧下降。</p>
+<p>默认策略是volatile-lru，即超过最大内存后，在过期键中使用lru算法进行key的剔除，保证不过期数据不被删除，但是可能会出现OOM问题。</p>
+<p>其他策略如下:</p>
+<ul>
+<li><p>allkeys-lru: 根据lru算法删除键，不管数据有没有设置超时时间，直到腾出足够空间位置。</p>
+</li>
+<li><p>allkeys-random : 随机删除所有键，直到腾出足够空间为止。</p>
+</li>
+<li><p>volatile-random : 随机删除过期键，直到腾出足够空间为止。</p>
+</li>
+<li><p>Volatile-ttl：根据键值对象的ttl属性，删除最近将要过期数据。如果没有，回退到noeviction策略。</p>
+</li>
+<li><p>noeviction：不会剔除任何数据，拒绝所有写入操作并返回客户端错误信息 “(error) </p>
+<p>OOM command not allowed when used memory”，此时Redis只响应读操作。</p>
+</li>
+</ul>
+
+    
+
+    
+    <div class="page-reward">
+      <a href="javascript:void(0);" class="page-reward-btn tooltip-top" target="_self">
+        <div class="tooltip tooltip-east">
+          <span class="tooltip-item">
+            赏
+          </span>
+          <span class="tooltip-content">
+            <span class="tooltip-text">
+              <span class="tooltip-inner">
+                <p class="reward-p"><i class="icon icon-quo-left"></i>谢谢你请我吃糖果<i
+                    class="icon icon-quo-right"></i></p>
+                <div class="reward-box">
+                  
+                  <div class="reward-box-item">
+                    <img class="reward-img" src="/img/alipay.jpg">
+                    <span class="reward-type">支付宝</span>
+                  </div>
+                  
+                  
+                  <div class="reward-box-item">
+                    <img class="reward-img" src="/img/weixin.png">
+                    <span class="reward-type">微信</span>
+                  </div>
+                  
+                </div>
+              </span>
+            </span>
+          </span>
+        </div>
+      </a>
+    </div>
+    
+
+    
+    <div class="declare"> 
+      <ul class="post-copyright">
+        <li>
+          <strong>本文作者：</strong>
+          宋龙宽|个人博客
+        </li>
+        <li>
+          <strong>本文链接：</strong>
+          <a href="https://songlongkuan.com/2020/06/26/redis_cache_optimization/" title="Redis 缓存设计与性能优化" target="_blank">https://songlongkuan.com/2020/06/26/redis_cache_optimization/</a>
+        </li>
+        
+        <li>
+          <strong>版权声明： </strong>
           
+          本博客所有文章除特别声明外，均采用 <a href="https://github.com/JoeyBling/hexo-theme-yilia-plus/blob/master/LICENSE" rel="external nofollow" target="_blank">MIT</a> 许可协议。转载请注明出处！
+        </li>
+        
+      </ul>
+    </div>
+    
+
+  </div>
+  <div class="article-info article-info-index">
+    
+    
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags icon"></i>
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">ThreadLocal</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">redis</a>
         		</li>
       		
 		</ul>
 	</div>
 
-          
+    
 	<div class="article-category tagcloud">
 		<i class="icon-book icon"></i>
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="/categories/Java//" class="article-tag-list-link color5">Java</a>
+        			<a href="/categories/redis//" class="article-tag-list-link color1">redis</a>
         		</li>
       		
 		</ul>
 	</div>
 
 
+    
+
+    
+    
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <!-- <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a> -->
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
         </div>
-        <div class="clearfix"></div>
-    </header>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+     <!-- <img src="//pan.baidu.com/share/qrcode?url=https://songlongkuan.com/2020/06/26/redis_cache_optimization/" alt="微信分享二维码"> -->
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
+
+    
+    <div class="clearfix"></div>
+  </div>
   </div>
 </article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	
-<a href="/2020/08/30/concurrent_executor_thread/" class="archive-article-date">
-        <time datetime="2020-08-30T04:48:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-30</time>
-</a>
 
+
+<nav id="article-nav">
+  
+    <a href="/2020/06/26/java_basics_classloader/" id="article-nav-newer" class="article-nav-link-wrap">
+      <i class="icon-circle-left"></i>
+      <div class="article-nav-title">
+        
+          Java基础  JDK类加载机制
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/06/26/redis_lua_lock/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">Redis Lua脚本原子性、高并发分布式锁</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
         </div>
-    	 
-  
-    <h1 itemprop="name">
-	
-	  <a class="archive-article-title" href="/2020/08/30/concurrent_executor_thread/" target="_blank">并发编程之Executor线程池原理、增强拒绝策略</a>
-  
-    </h1>
-  
-
-
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">Executor</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Java//" class="article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
+        
+        
+        <div class="toc-container tooltip-left">
+            <i class="icon-font icon-category"></i>
+            <div class="tooltip tooltip-east">
+                <span class="tooltip-item">
+                </span>
+                <span class="tooltip-content">
+                    <div class="toc-article">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E8%AE%BE%E8%AE%A1%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-number">1.</span> <span class="toc-text">缓存设计需要注意的问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E7%A9%BF%E9%80%8F"><span class="toc-number">1.1.</span> <span class="toc-text">缓存穿透</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E7%A9%BF%E9%80%8F%E5%8E%9F%E5%9B%A0"><span class="toc-number">1.1.0.0.1.</span> <span class="toc-text">缓存穿透原因</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E7%A9%BF%E9%80%8F%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">1.1.0.0.2.</span> <span class="toc-text">缓存穿透解决方案</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#Guava-%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8"><span class="toc-number">1.1.0.0.3.</span> <span class="toc-text">Guava 布隆过滤器</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#Redisson-%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8"><span class="toc-number">1.1.0.0.4.</span> <span class="toc-text">Redisson 布隆过滤器</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E5%8D%95%E7%82%B9Redis%E4%BD%BF%E7%94%A8"><span class="toc-number">1.1.0.0.5.</span> <span class="toc-text">单点Redis使用</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E9%9B%86%E7%BE%A4Redis%E8%8A%82%E7%82%B9%E4%BD%BF%E7%94%A8"><span class="toc-number">1.1.0.0.6.</span> <span class="toc-text">集群Redis节点使用</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E5%A4%B1%E6%95%88"><span class="toc-number">1.2.</span> <span class="toc-text">缓存失效</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E9%9B%AA%E5%B4%A9"><span class="toc-number">1.3.</span> <span class="toc-text">缓存雪崩</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%83%AD%E7%82%B9%E7%BC%93%E5%AD%98key%E9%87%8D%E5%BB%BA%E4%BC%98%E5%8C%96"><span class="toc-number">1.4.</span> <span class="toc-text">热点缓存key重建优化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96"><span class="toc-number">2.</span> <span class="toc-text">性能优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%94%AE%E5%80%BC%E8%AE%BE%E8%AE%A1"><span class="toc-number">2.1.</span> <span class="toc-text">键值设计</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#key-%E8%AE%BE%E8%AE%A1"><span class="toc-number">2.1.0.0.1.</span> <span class="toc-text">key 设计</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#value-%E8%AE%BE%E8%AE%A1"><span class="toc-number">2.1.0.0.2.</span> <span class="toc-text">value 设计</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#bigkey%E7%9A%84%E5%8D%B1%E5%AE%B3"><span class="toc-number">2.1.0.0.3.</span> <span class="toc-text">bigkey的危害</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#bigkey%E7%9A%84%E4%BA%A7%E7%94%9F"><span class="toc-number">2.1.0.0.4.</span> <span class="toc-text">bigkey的产生</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E4%BC%98%E5%8C%96bigkey"><span class="toc-number">2.1.0.0.5.</span> <span class="toc-text">如何优化bigkey</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%91%BD%E4%BB%A4%E4%BD%BF%E7%94%A8"><span class="toc-number">2.2.</span> <span class="toc-text">命令使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%BD%BF%E7%94%A8"><span class="toc-number">2.3.</span> <span class="toc-text">客户端使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Redis-%E6%B8%85%E9%99%A4%E7%AD%96%E7%95%A5"><span class="toc-number">2.4.</span> <span class="toc-text">Redis 清除策略</span></a></li></ol></li></ol>
+                    </div>
+                </span>
+            </div>
         </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-  
-    </div></section>
-  
+        
+    </div>
+</aside>
 
-    
+
+
+
+
+
+
+
+
+
+  <div id="giteement-ctn"></div>
+  
+    <link rel="stylesheet" href="/lib/default.css">
+    <script src="/lib/giteement.browser.js"></script>
+  
+  <script>
+  <!-- id: "Redis 缓存设计与性能优化" -->
+  var giteement = new Giteement({
+    id: '20200626175000',
+    owner: 'pencilso',
+    repo: 'blog_giteement',
+    backcall_uri: 'https://songlongkuan.com',
+    oauth_uri: 'https://cors-anywhere.herokuapp.com/https://gitee.com/oauth/token',
+    oauth: {
+      client_id: '2fb9fe73b468ad9aaa399aad2c2b3b2e810881fcbf656c49c6f5fc0d435cb53d',
+      client_secret: 'ec0c247c19221621f851c66564a5d946b85265197415e2470b436db7c3abd612'
+    },
+  })
+  giteement.render('giteement-ctn')
+  </script>
+
+
+
+
+
+
 
 
           </div>
@@ -356,9 +707,9 @@
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: false,
+		isPost: true,
 		isArchive: false,
-		isTag: true,
+		isTag: false,
 		isCategory: false,
 		open_in_new: true,
 		toc_hide_index: true,

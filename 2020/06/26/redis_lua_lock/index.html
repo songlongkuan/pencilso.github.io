@@ -6,17 +6,25 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
   <link rel="dns-prefetch" href="https://songlongkuan.com">
-  <title>Tag: Java | 宋龙宽|个人博客</title>
+  <title>Redis Lua脚本原子性、高并发分布式锁 | 宋龙宽|个人博客</title>
   <meta name="generator" content="hexo-theme-yilia-plus">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   
-  <meta property="og:type" content="website">
-<meta property="og:title" content="宋龙宽|个人博客">
-<meta property="og:url" content="https://songlongkuan.com/tags/Java/index.html">
+  <meta name="description" content="Redis Lua脚本原子性、高并发分布式锁">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis Lua脚本原子性、高并发分布式锁">
+<meta property="og:url" content="https://songlongkuan.com/2020/06/26/redis_lua_lock/index.html">
 <meta property="og:site_name" content="宋龙宽|个人博客">
+<meta property="og:description" content="Redis Lua脚本原子性、高并发分布式锁">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://oss.pencilso.cn/enclosure/redis_lock_jmeter_1592834574919.png">
+<meta property="article:published_time" content="2020-06-26T02:57:00.000Z">
+<meta property="article:modified_time" content="2021-01-31T12:19:08.598Z">
 <meta property="article:author" content="宋龙宽|个人博客">
+<meta property="article:tag" content="redis">
+<meta property="article:tag" content="lua">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://oss.pencilso.cn/enclosure/redis_lock_jmeter_1592834574919.png">
   
     <link rel="alternative" href="/atom.xml" title="宋龙宽|个人博客" type="application/atom+xml">
   
@@ -179,138 +187,346 @@
               class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
-  
-  
+            <article id="post-redis_lua_lock" class="article article-type-post " itemscope itemprop="blogPost">
+  <div class="article-inner">
     
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2020" class="archive-year">2020</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	
-<a href="/2020/09/12/java_threadlocal/" class="archive-article-date">
-        <time datetime="2020-09-12T07:30:16.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-09-12</time>
-</a>
-
-        </div>
-    	 
+      <header class="article-header">
   
-    <h1 itemprop="name">
-	
-	  <a class="archive-article-title" href="/2020/09/12/java_threadlocal/" target="_blank">Java之ThreadLocal</a>
   
+    <h1 class="article-title" itemprop="name">
+      Redis Lua脚本原子性、高并发分布式锁
     </h1>
   
 
 
-        <div class="article-info info-on-right">
+  
+  
+        
+        <span id="busuanzi_container_page_pv" style='display:none' class="archive-article-date">
+              <i class="icon-smile icon"></i> 阅读数：<span id="busuanzi_value_page_pv"></span>次
+        </span>
+
+<a href="/2020/06/26/redis_lua_lock/" class="archive-article-date">
+        <time datetime="2020-06-26T02:57:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-06-26</time>
+</a>
+
+  
+  
+    
+<div style="margin-top:10px;">
+  <span class="post-time">
+    <span class="post-meta-item-icon">
+      <!-- fonts.scss -->
+      <!-- 百度字体平台:http://fontstore.baidu.com/static/editor/index.html -->
+      <i class="icon-statistics"></i>
+      <span class="post-meta-item-text"> 字数统计:</span>
+      <span class="post-count">1.8k字</span>
+    </span>
+  </span>
+
+  <span class="post-time">
+    &nbsp; | &nbsp;
+    <span class="post-meta-item-icon">
+      <i class="icon-book icon"></i>
+      <span class="post-meta-item-text"> 阅读时长≈</span>
+      <span class="post-count">7分</span>
+    </span>
+  </span>
+</div>
+
+
+  
+  </header>
+  
+  <div class="article-entry" itemprop="articleBody">
+    
+    <p>在集群环境多节点下，存在多个进程竞争资源的问题，而传统Java自带的锁已经不能满足需求，这时就需要分布式锁。</p>
+<p>分布式锁有多种实现方案，Zookeeper等，而Redis的分布式锁性能非常高。</p>
+<a id="more"></a>
+
+<h6 id="模拟减库存场景"><a href="#模拟减库存场景" class="headerlink" title="模拟减库存场景"></a>模拟减库存场景</h6><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="meta">@RequestMapping(&quot;/redis/lock&quot;)</span></span><br><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisLockController</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Autowired</span></span><br><span class="line">    <span class="keyword">private</span> StringRedisTemplate stringRedisTemplatel;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1001商品的 redis key</span></span><br><span class="line">    <span class="keyword">private</span> String rediskey = <span class="string">&quot;product:1001:&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@PostConstruct</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">initStock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">//初始化库存100</span></span><br><span class="line">        stringRedisTemplatel.opsForValue().set(rediskey + <span class="string">&quot;stock&quot;</span>, String.valueOf(<span class="number">50</span>));</span><br><span class="line">        log.info(<span class="string">&quot;init stock 100&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//卖出商品接口</span></span><br><span class="line">    <span class="meta">@RequestMapping(&quot;sellProduct&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">sellProduct</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">//尝试使用jdk内置锁</span></span><br><span class="line">        <span class="keyword">synchronized</span> (<span class="keyword">this</span>) &#123;</span><br><span class="line">            ValueOperations&lt;String, String&gt; stringValueOperations = stringRedisTemplatel.opsForValue();</span><br><span class="line">            <span class="comment">//查询库存</span></span><br><span class="line">            Integer stock = Integer.valueOf(stringValueOperations.get(rediskey + <span class="string">&quot;stock&quot;</span>));</span><br><span class="line">            <span class="keyword">if</span> (stock &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="comment">//库存不足</span></span><br><span class="line">                <span class="keyword">return</span> <span class="string">&quot;库存不足&quot;</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            log.info(<span class="string">&quot;sell product , current stock:[&#123;&#125;] , surplus stock: [&#123;&#125;]&quot;</span>, stock, --stock);</span><br><span class="line">            stringValueOperations.set(rediskey + <span class="string">&quot;stock&quot;</span>, String.valueOf(stock));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;成功售出&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上诉代码，单机情况下是没有什么问题的，但是在集群环境下，存在多个进程消费一个stock的可能。</p>
+<p>配置nginx反向代理，然后idea运行两个SpringBoot进程，端口不同，分别为9090，9092.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">upstream myServer &#123;</span><br><span class="line">    server 192.168.2.103:9090 weight=1;</span><br><span class="line">    server 192.168.2.103:9092 weight=1;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">server &#123;</span><br><span class="line">    listen 80;</span><br><span class="line">    location / &#123;</span><br><span class="line">        proxy_pass http://myServer;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>配置jmeter自动化工具， 开启1000个线程，循环3次，调用nginx端口，再由nginx反向代理到两个进程。<img src="https://oss.pencilso.cn/enclosure/redis_lock_jmeter_1592834574919.png" alt="redis_lock_jmeter"></p>
+<p>测试结果输出如下，可见两个进程都消费了40，38 这两个库存</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 9090端口</span></span><br><span class="line">...</span><br><span class="line">sell product , current stock:[40] , surplus stock: [39]</span><br><span class="line">sell product , current stock:[38] , surplus stock: [37]</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 9092</span></span><br><span class="line">sell product , current stock:[40] , surplus stock: [39]</span><br><span class="line">sell product , current stock:[38] , surplus stock: [37]</span><br></pre></td></tr></table></figure>
+
+
+
+<h6 id="Redis分布式锁"><a href="#Redis分布式锁" class="headerlink" title="Redis分布式锁"></a>Redis分布式锁</h6><p>在redis中，存在setnx指令集，redis在执行这条指令之前会判断key是否已存在，key不存在的时候才会执行，并且返回1，如果key已存在，则不会执行，并且返回0。</p>
+<p>改造sellProduct接口，使用redistemplate的setIfAbsent方法，并且同时设置超时时间。</p>
+<p>如果没有设置超时时间的话，万一线程在获取锁后宕机了，没来得及释放锁，也就是没有删除key，那么就会造成其他的线程无法获得锁。</p>
+<p>为了防止代码出现异常无法删除key，应在finally代码块中删除key，而且在删除前，应判断是否是当前线程加的锁，否则可能删除掉其他线程加的锁。</p>
+<p>代码如下:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping(&quot;sellProduct&quot;)</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> String <span class="title">sellProduct</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="comment">// setnx锁的key</span></span><br><span class="line">     String redisLockKey = rediskey + <span class="string">&quot;lock&quot;</span>;</span><br><span class="line"></span><br><span class="line">     ValueOperations&lt;String, String&gt; stringValueOperations = stringRedisTemplatel.opsForValue();</span><br><span class="line">     <span class="comment">//生成一个uuid作为线程标识</span></span><br><span class="line">     String uuid = UUID.randomUUID().toString();</span><br><span class="line">     <span class="comment">//redistemplate为我们包装了setnx指令，这里执行setnx指令获取锁并且指定超时时间。</span></span><br><span class="line">     Boolean redisLock = stringValueOperations.setIfAbsent(redisLockKey, uuid, <span class="number">10</span>, TimeUnit.SECONDS);</span><br><span class="line">     <span class="keyword">try</span> &#123;</span><br><span class="line">         <span class="keyword">if</span> (!redisLock) &#123;</span><br><span class="line">             <span class="keyword">return</span> <span class="string">&quot;操作频繁&quot;</span>;</span><br><span class="line">         &#125;</span><br><span class="line">         <span class="comment">//查询库存</span></span><br><span class="line">         Integer stock = Integer.valueOf(stringValueOperations.get(rediskey + <span class="string">&quot;stock&quot;</span>));</span><br><span class="line">         <span class="keyword">if</span> (stock &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">             <span class="comment">//库存不足</span></span><br><span class="line">             <span class="keyword">return</span> <span class="string">&quot;库存不足&quot;</span>;</span><br><span class="line">         &#125;</span><br><span class="line">         log.info(<span class="string">&quot;sell product , current stock:[&#123;&#125;] , surplus stock: [&#123;&#125;]&quot;</span>, stock, --stock);</span><br><span class="line">         stringValueOperations.set(rediskey + <span class="string">&quot;stock&quot;</span>, String.valueOf(stock));</span><br><span class="line">     &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">         <span class="comment">//判断 这把锁是否是当前线程加的锁，是当前线程加的锁才删除掉</span></span><br><span class="line">         <span class="keyword">if</span> (uuid.equals(stringValueOperations.get(redisLockKey))) &#123;</span><br><span class="line">             <span class="comment">//删除key，释放锁</span></span><br><span class="line">             stringRedisTemplatel.delete(redisLockKey);</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="keyword">return</span> <span class="string">&quot;成功售出&quot;</span>;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这时候再次开启jmeter，已经不会出现重复消费的问题了，一般来讲，做到这里已经足够了但是还会遇到一些问题。</p>
+<ul>
+<li>比如说在删除key之前，这个线程宕了，那么就会导致key在超时时间之前无法被释放，从而造成死锁。</li>
+<li>假设锁的超时时间是10秒，而某一个线程获取锁后需要执行15秒，那么就会导致线程还没执行完毕，而锁已经自动释放，这时候其他线程获取锁后，存在资源竞争的问题。</li>
+</ul>
+<h6 id="Redis-lua脚本原子操作"><a href="#Redis-lua脚本原子操作" class="headerlink" title="Redis lua脚本原子操作"></a>Redis lua脚本原子操作</h6><p>以下代码，可能存在的问题是，在执行equals方法之后，执行delete之前宕机了，那么就会导致无法删除key。</p>
+<p>也就是无法保证get、delete 两个操作的原子性。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//判断 这把锁是否是当前线程加的锁，是当前线程加的锁才删除掉</span></span><br><span class="line"><span class="keyword">if</span> (uuid.equals(stringValueOperations.get(redisLockKey))) &#123;</span><br><span class="line">    <span class="comment">//删除key，释放锁</span></span><br><span class="line">    stringRedisTemplatel.delete(redisLockKey);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>用lua脚本来保障原子性</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 获取指定key的内容，并且放到变量里 uuid</span></span><br><span class="line"><span class="keyword">local</span> uuid = redis.call(<span class="string">&quot;get&quot;</span>,KEYS[<span class="number">1</span>])</span><br><span class="line"><span class="comment">-- 判断uuid 是否与传递进来的uuid一致</span></span><br><span class="line"><span class="keyword">if</span> (uuid == ARGV[<span class="number">1</span>]) <span class="keyword">then</span></span><br><span class="line">         <span class="comment">-- 删除key  </span></span><br><span class="line">    redis.call(<span class="string">&quot;del&quot;</span>,KEYS[<span class="number">1</span>])</span><br><span class="line">      <span class="comment">-- 返回 1</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="comment">--返回 0</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line"><span class="comment">-- 脚本结束</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>使用RedisTemplate 执行lua脚本。lua脚本可以一次性执行多条redis命令，以此保障原子性。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">DefaultRedisScript&lt;Number&gt; redisScript = <span class="keyword">new</span> DefaultRedisScript&lt;&gt;();</span><br><span class="line">redisScript.setResultType(Number.class);</span><br><span class="line">redisScript.setScriptText(</span><br><span class="line">        <span class="string">&quot;local uuid = redis.call(\&quot;get\&quot;,KEYS[1])\n&quot;</span> +</span><br><span class="line">                <span class="string">&quot;if (uuid == ARGV[1]) then\n&quot;</span> +</span><br><span class="line">                <span class="string">&quot;    redis.call(\&quot;del\&quot;,KEYS[1])\n&quot;</span> +</span><br><span class="line">                <span class="string">&quot;    return 1\n&quot;</span> +</span><br><span class="line">                <span class="string">&quot;else\n&quot;</span> +</span><br><span class="line">                <span class="string">&quot;    return 0\n&quot;</span> +</span><br><span class="line">                <span class="string">&quot;end&quot;</span>);</span><br><span class="line">List&lt;String&gt; keys = Collections.singletonList(redisLockKey);</span><br><span class="line">Number execute = stringRedisTemplatel.execute(</span><br><span class="line">        redisScript,</span><br><span class="line">        keys,</span><br><span class="line">        uuid</span><br><span class="line">);</span><br><span class="line">            <span class="comment">//这里的返回值，就是在lua脚本写的return所返回的</span></span><br><span class="line"><span class="keyword">int</span> result = execute.intValue();</span><br><span class="line">log.info(<span class="string">&quot;execute:[&#123;&#125;]&quot;</span>, result);</span><br></pre></td></tr></table></figure>
+
+<h6 id="Redisson-分布式锁"><a href="#Redisson-分布式锁" class="headerlink" title="Redisson 分布式锁"></a>Redisson 分布式锁</h6><p>之前提到过，假设setnx锁的超时时间设置为10秒，而某一个线程执行需要15秒，那么这个线程还未执行结束，其他线程会获取到锁，可能会产生资源竞争。那么要解决这个问题的话，有一套方案是为这把锁续命，就是开启一个子线程，然后延迟（超时时间 / 3）重新设置锁的超时时间。</p>
+<p>Redisson已经提供了相应的实现，直接使用就可以。</p>
+<p>添加pom依赖</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.redisson<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>redisson<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.13.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>配置redisson</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedissonConfiguration</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> RedissonClient <span class="title">getRedisson</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        Config config = <span class="keyword">new</span> Config();</span><br><span class="line">        config.useSingleServer()</span><br><span class="line">                .setAddress(<span class="string">&quot;redis://127.0.0.1:6379&quot;</span>)</span><br><span class="line">                .setRetryInterval(<span class="number">5000</span>)</span><br><span class="line">                .setTimeout(<span class="number">10000</span>)</span><br><span class="line">                .setConnectTimeout(<span class="number">10000</span>);</span><br><span class="line">        <span class="keyword">return</span> Redisson.create(config);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实现代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="meta">@RequestMapping(&quot;/redis/lock&quot;)</span></span><br><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisLockController</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Autowired</span></span><br><span class="line">    <span class="keyword">private</span> StringRedisTemplate stringRedisTemplatel;</span><br><span class="line">    <span class="meta">@Autowired</span></span><br><span class="line">    <span class="keyword">private</span> RedissonClient redissonClient;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1001商品的 redis key</span></span><br><span class="line">    <span class="keyword">private</span> String rediskey = <span class="string">&quot;product:1001:&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@PostConstruct</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">initStock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">//初始化库存100</span></span><br><span class="line">        stringRedisTemplatel.opsForValue().set(rediskey + <span class="string">&quot;stock&quot;</span>, String.valueOf(<span class="number">50</span>));</span><br><span class="line">        log.info(<span class="string">&quot;init stock 100&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//卖出商品接口</span></span><br><span class="line">    <span class="meta">@RequestMapping(&quot;sellProduct&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">sellProduct</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// setnx锁的key</span></span><br><span class="line">        String redisLockKey = rediskey + <span class="string">&quot;lock&quot;</span>;</span><br><span class="line">        <span class="comment">//初始化锁</span></span><br><span class="line">        RLock lock = redissonClient.getLock(redisLockKey);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">//执行加锁操作，如果没有竞争到锁，则会自旋，等待下一次获取锁。</span></span><br><span class="line">            lock.lock();</span><br><span class="line">            ValueOperations&lt;String, String&gt; stringValueOperations = stringRedisTemplatel.opsForValue();</span><br><span class="line">            <span class="comment">//查询库存</span></span><br><span class="line">            Integer stock = Integer.valueOf(stringValueOperations.get(rediskey + <span class="string">&quot;stock&quot;</span>));</span><br><span class="line">            <span class="keyword">if</span> (stock &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="comment">//库存不足</span></span><br><span class="line">                <span class="keyword">return</span> <span class="string">&quot;库存不足&quot;</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            log.info(<span class="string">&quot;sell product , current stock:[&#123;&#125;] , surplus stock: [&#123;&#125;]&quot;</span>, stock, --stock);</span><br><span class="line">            stringValueOperations.set(rediskey + <span class="string">&quot;stock&quot;</span>, String.valueOf(stock));</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="comment">//释放锁</span></span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;成功售出&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>有一点需要注意的是，lock.lock(); 是阻塞操作，当它获取锁失败，会自旋，一直获取锁。</p>
+<p>如果不需要使用自旋锁，可以用，lock.tryLock() ；api 它会返回一个boolean类型的返回值 。</p>
+
+    
+
+    
+    <div class="page-reward">
+      <a href="javascript:void(0);" class="page-reward-btn tooltip-top" target="_self">
+        <div class="tooltip tooltip-east">
+          <span class="tooltip-item">
+            赏
+          </span>
+          <span class="tooltip-content">
+            <span class="tooltip-text">
+              <span class="tooltip-inner">
+                <p class="reward-p"><i class="icon icon-quo-left"></i>谢谢你请我吃糖果<i
+                    class="icon icon-quo-right"></i></p>
+                <div class="reward-box">
+                  
+                  <div class="reward-box-item">
+                    <img class="reward-img" src="/img/alipay.jpg">
+                    <span class="reward-type">支付宝</span>
+                  </div>
+                  
+                  
+                  <div class="reward-box-item">
+                    <img class="reward-img" src="/img/weixin.png">
+                    <span class="reward-type">微信</span>
+                  </div>
+                  
+                </div>
+              </span>
+            </span>
+          </span>
+        </div>
+      </a>
+    </div>
+    
+
+    
+    <div class="declare"> 
+      <ul class="post-copyright">
+        <li>
+          <strong>本文作者：</strong>
+          宋龙宽|个人博客
+        </li>
+        <li>
+          <strong>本文链接：</strong>
+          <a href="https://songlongkuan.com/2020/06/26/redis_lua_lock/" title="Redis Lua脚本原子性、高并发分布式锁" target="_blank">https://songlongkuan.com/2020/06/26/redis_lua_lock/</a>
+        </li>
+        
+        <li>
+          <strong>版权声明： </strong>
           
+          本博客所有文章除特别声明外，均采用 <a href="https://github.com/JoeyBling/hexo-theme-yilia-plus/blob/master/LICENSE" rel="external nofollow" target="_blank">MIT</a> 许可协议。转载请注明出处！
+        </li>
+        
+      </ul>
+    </div>
+    
+
+  </div>
+  <div class="article-info article-info-index">
+    
+    
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags icon"></i>
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">redis</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">ThreadLocal</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">lua</a>
         		</li>
       		
 		</ul>
 	</div>
 
-          
+    
 	<div class="article-category tagcloud">
 		<i class="icon-book icon"></i>
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="/categories/Java//" class="article-tag-list-link color5">Java</a>
+        			<a href="/categories/redis//" class="article-tag-list-link color1">redis</a>
         		</li>
       		
 		</ul>
 	</div>
 
 
+    
+
+    
+    
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <!-- <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a> -->
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
         </div>
-        <div class="clearfix"></div>
-    </header>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+     <!-- <img src="//pan.baidu.com/share/qrcode?url=https://songlongkuan.com/2020/06/26/redis_lua_lock/" alt="微信分享二维码"> -->
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
+
+    
+    <div class="clearfix"></div>
+  </div>
   </div>
 </article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	
-<a href="/2020/08/30/concurrent_executor_thread/" class="archive-article-date">
-        <time datetime="2020-08-30T04:48:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-30</time>
-</a>
 
+
+<nav id="article-nav">
+  
+    <a href="/2020/06/26/redis_cache_optimization/" id="article-nav-newer" class="article-nav-link-wrap">
+      <i class="icon-circle-left"></i>
+      <div class="article-nav-title">
+        
+          Redis 缓存设计与性能优化
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/06/20/redis_cluster/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">Redis 缓存高可用集群、水平扩容、水平缩容</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
         </div>
-    	 
-  
-    <h1 itemprop="name">
-	
-	  <a class="archive-article-title" href="/2020/08/30/concurrent_executor_thread/" target="_blank">并发编程之Executor线程池原理、增强拒绝策略</a>
-  
-    </h1>
-  
-
-
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">Executor</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Java//" class="article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
+        
+        
+        <div class="toc-container tooltip-left">
+            <i class="icon-font icon-category"></i>
+            <div class="tooltip tooltip-east">
+                <span class="tooltip-item">
+                </span>
+                <span class="tooltip-content">
+                    <div class="toc-article">
+                    <ol class="toc"><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%A8%A1%E6%8B%9F%E5%87%8F%E5%BA%93%E5%AD%98%E5%9C%BA%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">模拟减库存场景</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#Redis%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81"><span class="toc-number">2.</span> <span class="toc-text">Redis分布式锁</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#Redis-lua%E8%84%9A%E6%9C%AC%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C"><span class="toc-number">3.</span> <span class="toc-text">Redis lua脚本原子操作</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#Redisson-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81"><span class="toc-number">4.</span> <span class="toc-text">Redisson 分布式锁</span></a></li></ol>
+                    </div>
+                </span>
+            </div>
         </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-  
-    </div></section>
-  
+        
+    </div>
+</aside>
 
-    
+
+
+
+
+
+
+
+
+
+  <div id="giteement-ctn"></div>
+  
+    <link rel="stylesheet" href="/lib/default.css">
+    <script src="/lib/giteement.browser.js"></script>
+  
+  <script>
+  <!-- id: "Redis Lua脚本原子性、高并发分布式锁" -->
+  var giteement = new Giteement({
+    id: '20200626105700',
+    owner: 'pencilso',
+    repo: 'blog_giteement',
+    backcall_uri: 'https://songlongkuan.com',
+    oauth_uri: 'https://cors-anywhere.herokuapp.com/https://gitee.com/oauth/token',
+    oauth: {
+      client_id: '2fb9fe73b468ad9aaa399aad2c2b3b2e810881fcbf656c49c6f5fc0d435cb53d',
+      client_secret: 'ec0c247c19221621f851c66564a5d946b85265197415e2470b436db7c3abd612'
+    },
+  })
+  giteement.render('giteement-ctn')
+  </script>
+
+
+
+
+
+
 
 
           </div>
@@ -356,9 +572,9 @@
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: false,
+		isPost: true,
 		isArchive: false,
-		isTag: true,
+		isTag: false,
 		isCategory: false,
 		open_in_new: true,
 		toc_hide_index: true,
