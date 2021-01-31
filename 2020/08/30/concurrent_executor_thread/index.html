@@ -21,7 +21,7 @@
 <meta property="og:image" content="https://oss.pencilso.cn/enclosure/thread_excter_2_1598752817575.png">
 <meta property="og:image" content="https://oss.pencilso.cn/enclosure/thread_excter_3_1598755457770.png">
 <meta property="article:published_time" content="2020-08-30T04:48:00.000Z">
-<meta property="article:modified_time" content="2021-01-07T01:43:41.736Z">
+<meta property="article:modified_time" content="2021-01-31T11:37:34.718Z">
 <meta property="article:author" content="宋龙宽|个人博客">
 <meta property="article:tag" content="Java">
 <meta property="article:tag" content="Executor">
@@ -243,18 +243,23 @@
   <div class="article-entry" itemprop="articleBody">
     
     <h2 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h2><p>线程是调度CPU资源的最小单位，线程模型分为KLT模型、ULT模型，JVM使用的KLT模型。因此Java线程与OS线程保持1:!的映射关系，也就是说一个Java线程也会在操作系统里有一个对应的线程。</p>
+<a id="more"></a>
 <p>Java线程有多种生命状态：</p>
 <ul>
-<li>NEW：新建</li>
-<li>RUNNABLE：运行</li>
-<li>BLOCKED：阻塞</li>
-<li>WAITING：等待</li>
-<li>TIMED_WAITING：超时等待</li>
-<li>TERMINATED：终结</li>
+<li><p>NEW：新建</p>
+</li>
+<li><p>RUNNABLE：运行</p>
+</li>
+<li><p>BLOCKED：阻塞</p>
+</li>
+<li><p>WAITING：等待</p>
+</li>
+<li><p>TIMED_WAITING：超时等待</p>
+</li>
+<li><p>TERMINATED：终结</p>
+<p><img src="https://oss.pencilso.cn/enclosure/thread_excter_1_1598748857919.png" alt="thread_excter_1"></p>
+</li>
 </ul>
-<a id="more"></a>
-
-<p> <img src="https://oss.pencilso.cn/enclosure/thread_excter_1_1598748857919.png" alt="thread_excter_1"></p>
 <h2 id="协程"><a href="#协程" class="headerlink" title="协程"></a>协程</h2><p>这里记录一下协程相关的资料，协程（纤程、用户级线程），主要目的是为了追求最大力度的发挥硬件性能和提升软件的速度。</p>
 <p>协程的基本原理：在某个点挂起当前的任务，并且保存栈信息，去执行另一个任务，等完成或达到某个条件时，再还原原来的栈信息并继续执行，（整个过程不需要上下文切换）</p>
 <p>协程是用户级线程ULT模型，多个协程由一个线程所处理，协程的创建与销毁由程序自己来控制，当提交了多个线程任务，那么最终都是由一个KLT线程去顺序执行这些协程的任务。以此避免KLT线程之间的切换。</p>
@@ -574,6 +579,11 @@ getTask方法返回null时，在runWorker方法中会跳出while循环，然后�
     </a>
   
   
+    <a href="/2020/06/26/java_basics_classloader/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">Java基础  JDK类加载机制</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
 </nav>
 
 
@@ -792,6 +802,10 @@ getTask方法返回null时，在runWorker方法中会跳出while循环，然后�
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">LRU</a>
               </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">类加载机制</a>
+              </li>
             
             <div class="clearfix"></div>
           </ul>
@@ -934,16 +948,6 @@ getTask方法返回null时，在runWorker方法中会跳出while循环，然后�
   <!-- <script async type="text/javascript" size="90" alpha="0.2" zIndex="0" src="/plugins/ribbon.js/ribbon.min.js"></script> -->
   
   
-  
-  <script type="text/javascript" src="/lib/snow.js"></script>
-  <script type="text/javascript" src="/lib/jquery-2.1.4.min.js"></script>
-  <script>
-    snow.down();
-    $(window).resize(function() {
-      $("canvas").css("z-index","500").remove();
-      snow.down();
-    });
-  </script>
   
 </body>
 

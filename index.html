@@ -442,12 +442,6 @@
   <div class="article-entry" itemprop="articleBody">
     
     <p>ThreadLocal是一个用来在当前线程种存储自定义数据的，它可以做到线程与线程之间的数据隔离。</p>
-<h2 id="ThreadLocal的简单应用"><a href="#ThreadLocal的简单应用" class="headerlink" title="ThreadLocal的简单应用"></a>ThreadLocal的简单应用</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ThreadLocalApplication</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> ThreadLocal&lt;String&gt; threadLocal = <span class="keyword">new</span> ThreadLocal&lt;&gt;();</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">new</span> Thread(() -&gt; &#123;</span><br><span class="line">            System.out.println(Thread.currentThread().getName() + <span class="string">&quot; 执行前数据:&quot;</span> + threadLocal.get());</span><br><span class="line">            threadLocal.set(<span class="string">&quot;张三&quot;</span>);</span><br><span class="line">            System.out.println(Thread.currentThread().getName() + <span class="string">&quot; 执行前数后:&quot;</span> + threadLocal.get());</span><br><span class="line">        &#125;, <span class="string">&quot;thread-1&quot;</span>).start();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">new</span> Thread(() -&gt; &#123;</span><br><span class="line">            System.out.println(Thread.currentThread().getName() + <span class="string">&quot; 执行前数据:&quot;</span> + threadLocal.get());</span><br><span class="line">            threadLocal.set(<span class="string">&quot;李四&quot;</span>);</span><br><span class="line">            System.out.println(Thread.currentThread().getName() + <span class="string">&quot; 执行前数后:&quot;</span> + threadLocal.get());</span><br><span class="line">        &#125;, <span class="string">&quot;thread-2&quot;</span>).start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>运行后输出如下：</p>
-<figure class="highlight verilog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">thread-<span class="number">1</span> 执行前数据:<span class="literal">null</span></span><br><span class="line">thread-<span class="number">1</span> 执行前数后:张三</span><br><span class="line">thread-<span class="number">2</span> 执行前数据:<span class="literal">null</span></span><br><span class="line">thread-<span class="number">2</span> 执行前数后:李四</span><br></pre></td></tr></table></figure>
-
-<p>由此可以得出结论，threadLocal是线程之间隔离的数据存储方式。</p>
     
     <a class="article-more-a" href="/2020/09/12/java_threadlocal/#more">more >></a>
     
@@ -551,15 +545,6 @@
   <div class="article-entry" itemprop="articleBody">
     
     <h2 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h2><p>线程是调度CPU资源的最小单位，线程模型分为KLT模型、ULT模型，JVM使用的KLT模型。因此Java线程与OS线程保持1:!的映射关系，也就是说一个Java线程也会在操作系统里有一个对应的线程。</p>
-<p>Java线程有多种生命状态：</p>
-<ul>
-<li>NEW：新建</li>
-<li>RUNNABLE：运行</li>
-<li>BLOCKED：阻塞</li>
-<li>WAITING：等待</li>
-<li>TIMED_WAITING：超时等待</li>
-<li>TERMINATED：终结</li>
-</ul>
     
     <a class="article-more-a" href="/2020/08/30/concurrent_executor_thread/#more">more >></a>
     
@@ -604,6 +589,105 @@
     
     <p class="article-more-link">
       <a class="article-more-a" href="/2020/08/30/concurrent_executor_thread/">展开全文 >></a>
+    </p>
+    
+
+    
+    <div class="clearfix"></div>
+  </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-java_basics_classloader" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+  
+  
+    <h1 itemprop="name">
+	
+	  <a class="article-title" href="/2020/06/26/java_basics_classloader/" target="_blank">Java基础  JDK类加载机制</a>
+  
+    </h1>
+  
+
+
+  
+  
+<a href="/2020/06/26/java_basics_classloader/" class="archive-article-date">
+        <time datetime="2020-06-26T12:00:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-06-26</time>
+</a>
+
+  
+  
+    
+
+  
+  </header>
+  
+  <div class="article-entry" itemprop="articleBody">
+    
+    <p>记录类加载全过程、类加载器、双亲委派机制，以及自定义类加载器。</p>
+    
+    <a class="article-more-a" href="/2020/06/26/java_basics_classloader/#more">more >></a>
+    
+    
+
+    
+
+    
+
+  </div>
+  <div class="article-info article-info-index">
+    
+    
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">类加载机制</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+    
+	<div class="article-category tagcloud">
+		<i class="icon-book icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="/categories/Java//" class="article-tag-list-link color5">Java</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+
+    
+    <p class="article-more-link">
+      <a class="article-more-a" href="/2020/06/26/java_basics_classloader/">展开全文 >></a>
     </p>
     
 
@@ -785,6 +869,10 @@
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">LRU</a>
               </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">类加载机制</a>
+              </li>
             
             <div class="clearfix"></div>
           </ul>
@@ -927,16 +1015,6 @@
   <!-- <script async type="text/javascript" size="90" alpha="0.2" zIndex="0" src="/plugins/ribbon.js/ribbon.min.js"></script> -->
   
   
-  
-  <script type="text/javascript" src="/lib/snow.js"></script>
-  <script type="text/javascript" src="/lib/jquery-2.1.4.min.js"></script>
-  <script>
-    snow.down();
-    $(window).resize(function() {
-      $("canvas").css("z-index","500").remove();
-      snow.down();
-    });
-  </script>
   
 </body>
 
